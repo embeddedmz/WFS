@@ -4,13 +4,16 @@ BINARY=wfs
 CONFIG=wfs.conf
 TARGETS=targets.txt
 INITSCRIPT=init.d/wfs
+#SYSTEMD_INITSCRIPT=systemd/system/wfs
 
 BINARY_TARGET=/usr/bin
 INITSCRIPT_TARGET=/etc/init.d
+#SYSTEMD_INITSCRIPT_TARGET=/etc/systemd/system
 CONFIG_TARGET=/etc/wfs
 
 if [ "$1" == "remove" ]
 then
+    #systemctl disable wfs.service
     if [ -e /etc/debian_version ]
     then
         update-rc.d -f wfs remove
@@ -36,6 +39,7 @@ cp "$INITSCRIPT" "$INITSCRIPT_TARGET"
 
 chmod 755 "$BINARY_TARGET/$BINARY"
 chmod 755 "$INITSCRIPT_TARGET/`basename $INITSCRIPT`"
+#chmod 755 "$SYSTEMD_INITSCRIPT_TARGET/`basename $SYSTEMD_INITSCRIPT`"
 
 if [ -e $CONFIG_TARGET/$CONFIG ]
 then
@@ -53,6 +57,8 @@ else
     cp "$TARGETS" "$CONFIG_TARGET/$TARGETS" 
 fi
 
+#systemctl enable wfs.service
+#systemctl start wfs.service
 if [ -e /etc/debian_version ]
 then
     update-rc.d wfs defaults 99 10

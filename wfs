@@ -17,8 +17,8 @@ then
     . $CONFIG_FILE
 else
     TARGETS_FILE="$CONFIG/targets.txt"
-    PRIMARY_GW=10.0.0.1
-    SECONDARY_GW=192.168.1.1
+    PRIMARY_GW_IFACE=eth0
+    SECONDARY_GW_IFACE=ppp
     MAX_LATENCY=1
     INTERVAL=20
     TEST_COUNT=2
@@ -44,16 +44,18 @@ ACTIVE_CONNECTION=""
 TEST_INTERVAL="$INTERVAL"
 NO_OF_TARGETS=ERROR
 
+PRIMARY_GW=""
+SECONDARY_GW=""
 
 # --- do not change anything below ---
 
-route -n | grep -w "$PRIMARY_GW" | grep -w "0.0.0.0" >> /dev/null 2>&1
-if [ "$?" = "0" ]
-then
+#route -n | grep -w "$PRIMARY_GW" | grep -w "0.0.0.0" >> /dev/null 2>&1
+#if [ "$?" = "0" ]
+#then
     ACTIVE_CONNECTION=PRIMARY
-else
-    ACTIVE_CONNECTION=SECONDARY
-fi
+#else
+#    ACTIVE_CONNECTION=SECONDARY
+#fi
 
 log () {
 
@@ -114,6 +116,16 @@ init_wfs () {
         TARGETS=`cat "$TARGETS_FILE"`
         TMPVAR=( $TARGETS )
         NO_OF_TARGETS=${#TMPVAR[@]}
+    fi
+
+    PRIMARY_GW=`ip route show 0.0.0.0/0 dev $PRIMARY_GW_IFACE 2>&1`
+    if [ "$?" = "0" ]
+    then
+        PRIMARY_GW=`echo $PRIMARY_GW | cut -d\  -f3`
+        log DEBUG "Primary interface gateway is : $PRIMARY_GW"
+    else
+        log ERROR "Couldn't find the gateway of the primary interface '$PRIMARY_GW_IFACE'."
+        exit 1
     fi
 
     if [ -z "$TARGETS" ]
@@ -287,6 +299,23 @@ start_wfs () {
 
     while true
     do
+        if [ -z "$SECONDARY_GW" ]
+        then
+            SECONDARY_GW=`ip route show 0.0.0.0/0 dev $SECONDARY_GW_IFACE 2>&1`
+            if [ "$?" = "0" ]
+            then
+                SECONDARY_GW=`echo $SECONDARY_GW | cut -d\  -f3`
+                log DEBUG "Secondary interface gateway is : $SECONDARY_GW"
+            else
+                SECONDARY_GW=""
+                sleep 10
+                continue
+            fi
+        else
+            # TODO : check that SECONDARY_GW didn't change !
+            
+        fi
+
         test_wan_status
     done
 }

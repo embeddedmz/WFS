@@ -118,6 +118,7 @@ init_wfs () {
         NO_OF_TARGETS=${#TMPVAR[@]}
     fi
 
+    # the code below can be moved in start_wfs() loop ! (e.g. cable is not plugged + dhcp is used)
     PRIMARY_GW=`ip route show 0.0.0.0/0 dev $PRIMARY_GW_IFACE 2>&1`
     if [ "$?" = "0" ]
     then
@@ -336,10 +337,16 @@ stop_wfs () {
         done
     fi
 
-    if [ -n "$SECONDARY_GW" ] && [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
+    if [ -n "$PRIMARY_GW" ] && [ -n "$SECONDARY_GW" ]
     then
-        log DEBUG "Restoring secondary gateway '$SECONDARY_GW' with a metric of 20 !"
-        ip route add default via "$SECONDARY_GW" metric 20
+        if [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
+        then
+            log DEBUG "Restoring secondary gateway '$SECONDARY_GW' with a metric of 20 !"
+            ip route add default via "$SECONDARY_GW" metric 20
+        else
+            log DEBUG "Restoring primary gateway '$PRIMARY_GW' with a metric of 0 !"
+            ip route add default via "$PRIMARY_GW" metric 0
+        fi
     fi
 
     exit 0

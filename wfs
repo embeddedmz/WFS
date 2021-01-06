@@ -124,6 +124,12 @@ init_wfs () {
     then
         PRIMARY_GW=`echo $PRIMARY_GW | cut -d\  -f3`
         log DEBUG "Primary interface gateway is : $PRIMARY_GW"
+
+        if [ -z "$PRIMARY_GW" ]
+        then
+            log ERROR "Couldn't find the gateway of the primary interface '$PRIMARY_GW_IFACE'."
+            exit 1
+        fi
     else
         log ERROR "Couldn't find the gateway of the primary interface '$PRIMARY_GW_IFACE'."
         exit 1

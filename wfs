@@ -330,7 +330,7 @@ stop_wfs () {
     log INFO "Got SIGTERM, cleaning and exiting."
     TARGETS=`cat "$TARGETS_FILE"`
 
-    kill `cat $PIDFILE`
+    #kill `cat $PIDFILE`
     rm $PIDFILE
 
     if [ ! -z "$TARGETS" ]
@@ -365,7 +365,12 @@ fi
 
 if [ "$1" == "--stop" ]
 then
-    stop_wfs
+    #stop_wfs
+    if [ -e "$PIDFILE" ]
+    then
+        kill `cat $PIDFILE`
+    fi
+    
     exit 0
 fi
 

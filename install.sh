@@ -11,7 +11,7 @@ INITSCRIPT_TARGET=/etc/init.d
 #SYSTEMD_INITSCRIPT_TARGET=/etc/systemd/system
 CONFIG_TARGET=/etc/wfs
 
-if [ "$1" == "remove" ]
+if [ "$1" = "remove" ]
 then
     #systemctl disable wfs.service
     if [ -e /etc/debian_version ]

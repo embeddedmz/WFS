@@ -3,7 +3,7 @@
 BINARY=wfs
 CONFIG=wfs.conf
 TARGETS=targets.txt
-SYSTEMD_INITSCRIPT=systemd/system/wfs
+SYSTEMD_INITSCRIPT=systemd/system/wfs.service
 
 BINARY_TARGET=/usr/bin
 SYSTEMD_INITSCRIPT_TARGET=/etc/systemd/system

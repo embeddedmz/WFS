@@ -18,7 +18,7 @@ then
 else
     TARGETS_FILE="$CONFIG/targets.txt"
     PRIMARY_GW_IFACE=eth0
-    SECONDARY_GW_IFACE=ppp
+    SECONDARY_GW_IFACE=ppp0
     MAX_LATENCY=1
     INTERVAL=20
     TEST_COUNT=2
@@ -306,14 +306,14 @@ start_wfs () {
             then
                 SECONDARY_GW=`echo $SECONDARY_GW | cut -d\  -f3`
                 log DEBUG "Secondary interface gateway is : $SECONDARY_GW"
+                # remove it !
+                #ip route del default via "$SECONDARY_GW"
+                route_del "$SECONDARY_GW"
             else
                 SECONDARY_GW=""
                 sleep 10
                 continue
             fi
-        else
-            # TODO : check that SECONDARY_GW didn't change !
-            
         fi
 
         test_wan_status
@@ -334,6 +334,12 @@ stop_wfs () {
             log DEBUG "Removing static route for host $x"
             route del -host "$x" gw "$PRIMARY_GW" >> /dev/null 2>&1
         done
+    fi
+
+    if [ -n "$SECONDARY_GW" ] && [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
+    then
+        log DEBUG "Restoring secondary gateway '$SECONDARY_GW' with a metric of 20 !"
+        ip route add default via "$SECONDARY_GW" metric 20
     fi
 
     exit 0

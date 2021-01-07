@@ -186,21 +186,25 @@ test_wan_status () {
 }
 
 route_add () {
-
-    route add default gw "$1"
+    if [ "$#" -lt "2" ]
+    then
+        route add default gw "$1"
+    else
+        route add default gw "$1" metric "$2"
+    fi
 }
 
 switch_to_primary () {
 
     route_del "$SECONDARY_GW"
-    route_add "$PRIMARY_GW"
+    route_add "$PRIMARY_GW" 0
     ACTIVE_CONNECTION="PRIMARY"
 }
 
 switch_to_secondary () {
 
     route_del "$PRIMARY_GW"
-    route_add "$SECONDARY_GW"
+    route_add "$SECONDARY_GW" 20
     ACTIVE_CONNECTION="SECONDARY"
 }
 
@@ -271,7 +275,7 @@ start_wfs () {
                 PRIMARY_GW=`echo $PRIMARY_GW | cut -d\  -f3`
                 if [ -n "$PRIMARY_GW" ] && [[ "$PRIMARY_GW" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
                 then
-                    log DEBUG "Primary interface gateway is : $PRIMARY_GW"
+                    log INFO "Primary interface gateway is : $PRIMARY_GW"
                     if [ -z "$TARGETS" ]
                     then
                         log ERROR "No targets to test availability, targets file $TARGETS_FILE empty?."
@@ -279,7 +283,7 @@ start_wfs () {
                     else
                         for x in $TARGETS
                         do
-                            log DEBUG "Adding static route for host $x"
+                            log INFO "Adding static route for host $x"
                             route add -host "$x" gw "$PRIMARY_GW" >> /dev/null 2>&1
                         done
                     fi
@@ -304,7 +308,7 @@ start_wfs () {
                 SECONDARY_GW=`echo $SECONDARY_GW | cut -d\  -f3`
                 if [ -n "$SECONDARY_GW" ] && [[ "$SECONDARY_GW" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
                 then
-                    log DEBUG "Secondary interface gateway is : $SECONDARY_GW"
+                    log INFO "Secondary interface gateway is : $SECONDARY_GW"
                     # remove it !
                     #ip route del default via "$SECONDARY_GW"
                     route_del "$SECONDARY_GW"
@@ -335,7 +339,7 @@ stop_wfs () {
     then
         for x in $TARGETS
         do
-            log DEBUG "Removing static route for host $x"
+            log INFO "Removing static route for host $x"
             route del -host "$x" gw "$PRIMARY_GW" >> /dev/null 2>&1
         done
     fi
@@ -344,10 +348,10 @@ stop_wfs () {
     then
         if [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
         then
-            log DEBUG "Restoring secondary gateway '$SECONDARY_GW' with a metric of 20 !"
+            log INFO "Restoring secondary gateway '$SECONDARY_GW' with a metric of 20 !"
             ip route add default via "$SECONDARY_GW" metric 20
         else
-            log DEBUG "Restoring primary gateway '$PRIMARY_GW' with a metric of 0 !"
+            log INFO "Restoring primary gateway '$PRIMARY_GW' with a metric of 0 !"
             ip route add default via "$PRIMARY_GW" metric 0
         fi
     fi

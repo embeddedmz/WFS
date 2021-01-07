@@ -127,7 +127,7 @@ display_header () {
     log INFO "------------------------------"
     log INFO " WAN Failover Script $VERSION"
     log INFO "------------------------------"
-    log INFO " Max latency in ms: $MAX_LATENCY"
+    log INFO " Max latency in seconds : $MAX_LATENCY"
     log INFO " Threshold before failover: $THRESHOLD"
     log INFO " Number of target hosts: $NO_OF_TARGETS"
     log INFO " Tests per host: $TEST_COUNT"

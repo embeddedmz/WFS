@@ -149,7 +149,7 @@ test_single_target () {
     ping -W "$MAX_LATENCY" -c "$TEST_COUNT" "$TARGET" >> /dev/null 2>&1
     if [ ! "$?" = "0" ]
     then
-        log INFO "Host $TARGET UNREACHABLE"
+        log DEBUG "Host $TARGET UNREACHABLE"
 
         if [ "$TARGETS_FAILED" -lt "$THRESHOLD" ]
         then
@@ -178,7 +178,7 @@ test_wan_status () {
         test_single_target $x
         if [ "$TARGETS_FAILED" -gt "0" ]
         then
-            log INFO "Failed targets is $TARGETS_FAILED, threshold is $THRESHOLD."
+            log DEBUG "Failed targets is $TARGETS_FAILED, threshold is $THRESHOLD."
         fi
         check_wan_status
         sleep "$TEST_INTERVAL"
@@ -208,15 +208,15 @@ check_wan_status () {
 
     if [ "$TARGETS_FAILED" -ge "$THRESHOLD" ] && [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
     then
-	switch
+	    switch
     elif [ "$ACTIVE_CONNECTION" = "SECONDARY" ]
     then
         if [ "$TARGETS_FAILED" = "0" ]
         then
-	    switch
+	        switch
         fi
     else
-        log INFO "WAN Link: $ACTIVE_CONNECTION"
+        log DEBUG "WAN Link: $ACTIVE_CONNECTION"
     fi
 }
 
@@ -229,14 +229,13 @@ switch () {
         then
             eval "$SECONDARY_CMD"
         fi
-    sleep "5"
-    MSG="Primary WAN link failed. Switched to secondary link."
-    BODY=`route -n`
-    log2mail "$MSG" "$BODY"
-    log INFO "$MSG"
-    log DEBUG "Failover Cooldown started, sleeping for $COOLDOWNDELAY01 seconds."
-    sleep "$COOLDOWNDELAY01"
-
+        sleep "5"
+        MSG="Primary WAN link failed. Switched to secondary link."
+        #BODY=`route -n`
+        #log2mail "$MSG" "$BODY"
+        log INFO "$MSG"
+        log DEBUG "Failover Cooldown started, sleeping for $COOLDOWNDELAY01 seconds."
+        sleep "$COOLDOWNDELAY01"
     elif [ "$ACTIVE_CONNECTION" = "SECONDARY" ]
     then
         switch_to_primary
@@ -244,13 +243,13 @@ switch () {
         then
             eval "$PRIMARY_CMD"
         fi
-    sleep "10"
-    MSG="Primary WAN link OK. Switched back to primary link."
-    BODY=`route -n`
-    log2mail "$MSG" "$BODY"
-    log INFO "$MSG"
-    log DEBUG "Failback Cooldown started, sleeping for $COOLDOWNDELAY02 seconds."
-    sleep "$COOLDOWNDELAY02"
+        sleep "10"
+        MSG="Primary WAN link OK. Switched back to primary link."
+        #BODY=`route -n`
+        #log2mail "$MSG" "$BODY"
+        log INFO "$MSG"
+        log DEBUG "Failback Cooldown started, sleeping for $COOLDOWNDELAY02 seconds."
+        sleep "$COOLDOWNDELAY02"
     fi
 }
 

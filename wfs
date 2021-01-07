@@ -28,9 +28,7 @@ else
     COOLDOWNDELAY01=3600
     COOLDOWNDELAY02=600
     MAIL_TARGET=""
-    DAEMON=1
     QUIET=0
-    PIDFILE=/var/run/wfs.pid
     #
     # If some command must be run after a failover or restore, please specify
     # the commands within these variables.
@@ -117,45 +115,6 @@ init_wfs () {
         TMPVAR=( $TARGETS )
         NO_OF_TARGETS=${#TMPVAR[@]}
     fi
-
-    # the code below can be moved in start_wfs() loop ! (e.g. cable is not plugged + dhcp is used)
-    PRIMARY_GW=`ip route show 0.0.0.0/0 dev $PRIMARY_GW_IFACE 2>&1`
-    if [ "$?" = "0" ]
-    then
-        PRIMARY_GW=`echo $PRIMARY_GW | cut -d\  -f3`
-        log DEBUG "Primary interface gateway is : $PRIMARY_GW"
-
-        if [ -z "$PRIMARY_GW" ]
-        then
-            log ERROR "Couldn't find the gateway of the primary interface '$PRIMARY_GW_IFACE'."
-            exit 1
-        fi
-    else
-        log ERROR "Couldn't find the gateway of the primary interface '$PRIMARY_GW_IFACE'."
-        exit 1
-    fi
-
-    if [ -z "$TARGETS" ]
-    then
-        log ERROR "No targets to test availability, targets file $TARGETS_FILE empty?."
-        exit 1
-    else
-        for x in $TARGETS
-        do
-            log DEBUG "Adding static route for host $x"
-            route add -host "$x" gw "$PRIMARY_GW" >> /dev/null 2>&1
-        done
-    fi
-}
-
-
-check_for_pid () {
-
-    if [ -e "$PIDFILE" ]
-    then
-        log ERROR "PID file $PIDFILE exists. Aborting."
-        exit 1
-    fi
 }
 
 route_del () {
@@ -168,7 +127,6 @@ display_header () {
     log INFO "------------------------------"
     log INFO " WAN Failover Script $VERSION"
     log INFO "------------------------------"
-    log INFO " Primary gateway: $PRIMARY_GW"
     log INFO " Max latency in ms: $MAX_LATENCY"
     log INFO " Threshold before failover: $THRESHOLD"
     log INFO " Number of target hosts: $NO_OF_TARGETS"
@@ -305,33 +263,74 @@ start_wfs () {
 
     while true
     do
+        if [ -z "$PRIMARY_GW" ]
+        then
+            PRIMARY_GW=`ip route show 0.0.0.0/0 dev $PRIMARY_GW_IFACE 2>&1`
+            FOUND_PRIMARY_GW=FALSE
+            if [ "$?" = "0" ]
+            then
+                PRIMARY_GW=`echo $PRIMARY_GW | cut -d\  -f3`
+                if [ -n "$PRIMARY_GW" ] && [[ "$PRIMARY_GW" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+                then
+                    log DEBUG "Primary interface gateway is : $PRIMARY_GW"
+                    if [ -z "$TARGETS" ]
+                    then
+                        log ERROR "No targets to test availability, targets file $TARGETS_FILE empty?."
+                        exit 1
+                    else
+                        for x in $TARGETS
+                        do
+                            log DEBUG "Adding static route for host $x"
+                            route add -host "$x" gw "$PRIMARY_GW" >> /dev/null 2>&1
+                        done
+                    fi
+                    FOUND_PRIMARY_GW=TRUE
+                fi
+            fi
+
+            if [ "$FOUND_PRIMARY_GW" = "FALSE"  ]
+            then
+                PRIMARY_GW=""
+                sleep 10
+                continue
+            fi
+        fi
+
         if [ -z "$SECONDARY_GW" ]
         then
             SECONDARY_GW=`ip route show 0.0.0.0/0 dev $SECONDARY_GW_IFACE 2>&1`
+            FOUND_SECONDARY_GW=FALSE
             if [ "$?" = "0" ]
             then
                 SECONDARY_GW=`echo $SECONDARY_GW | cut -d\  -f3`
-                log DEBUG "Secondary interface gateway is : $SECONDARY_GW"
-                # remove it !
-                #ip route del default via "$SECONDARY_GW"
-                route_del "$SECONDARY_GW"
-            else
+                if [ -n "$SECONDARY_GW" ] && [[ "$SECONDARY_GW" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+                then
+                    log DEBUG "Secondary interface gateway is : $SECONDARY_GW"
+                    # remove it !
+                    #ip route del default via "$SECONDARY_GW"
+                    route_del "$SECONDARY_GW"
+                    FOUND_SECONDARY_GW=TRUE
+                fi
+            fi
+
+            if [ "$FOUND_SECONDARY_GW" = "FALSE"  ]
+            then
                 SECONDARY_GW=""
                 sleep 10
                 continue
             fi
         fi
 
-        test_wan_status
+	if [ -n "$PRIMARY_GW" ] && [ -n "$SECONDARY_GW" ]
+        then
+            test_wan_status
+        fi
     done
 }
 
 stop_wfs () {
     log INFO "Got SIGTERM, cleaning and exiting."
     TARGETS=`cat "$TARGETS_FILE"`
-
-    #kill `cat $PIDFILE`
-    rm $PIDFILE
 
     if [ ! -z "$TARGETS" ]
     then
@@ -357,29 +356,6 @@ stop_wfs () {
     exit 0
 }
 
-# cleanup works only if $DAEMON is 1
-if [ "$DAEMON" = "1" ]
-then
-    trap stop_wfs SIGINT SIGTERM
-fi
+trap stop_wfs SIGINT SIGTERM
 
-if [ "$1" == "--stop" ]
-then
-    #stop_wfs
-    if [ -e "$PIDFILE" ]
-    then
-        kill `cat $PIDFILE`
-    fi
-    
-    exit 0
-fi
-
-if [ "$DAEMON" = "0" ]
-then
-    check_for_pid
-    start_wfs
-else
-    check_for_pid
-    start_wfs &
-    echo "$!" > "$PIDFILE"
-fi
+start_wfs

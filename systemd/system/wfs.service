@@ -1,12 +1,12 @@
 [Unit]
-Description=Launch the WAN failover script
+Description=WAN failover script
 After=network.target
 #ConditionPathExists=/usr/bin/wfs
 
 [Service]
-Type=forking
+Type=simple
 ExecStart=/bin/bash /usr/bin/wfs
-ExecStop=/bin/bash /usr/bin/wfs --stop
+#ExecStop=/bin/bash /usr/bin/wfs --stop
 #Restart=on-failure
 
 [Install]

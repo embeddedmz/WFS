@@ -8,6 +8,7 @@ Original script by louwrentius@gmail.com
 Modified to add a cleanup function to remove routes added by the script on startup.
 The cleanup function (called wfs_stop) only works with deamon mode.
 
+Modified in this fork to automatically get the default gateway addresses of the interfaces.
 
 Design
 ======
@@ -19,16 +20,11 @@ default gateway.
 ## Installation
 
  * untar the tar file
- * run the install.sh script.
+ * run the install_with_systemd.sh script.
  * edit the configuration /etc/wfs/wfs.conf to your liking
  * add target hosts used for testing in /etc/wfs/targets.txt
- * start wfs through "/etc/init.d/wfs start"
+ * start wfs through "sudo systemctl start wfs"
 
-## For email notifications (Ubuntu)
-
-  * apt-get install mailutils postfix (installs mail and a local MTA)
-  * configure postfix as an internet gateway
-  * do not forward an inbound mail to this instance, it should be behind a firewall and for outbound notification traffic only.
 
 ## Assumption
 

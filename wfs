@@ -322,7 +322,7 @@ start_wfs () {
                 done
 
                 # Restore secondary gateway
-                if [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
+                if [ "$RESTART_SERVICE" = "TRUE" ] && [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
                 then
                     log INFO "Restoring secondary gateway '$SECONDARY_GW' with a metric of 20 !"
                     ip route add default via "$SECONDARY_GW" metric 20

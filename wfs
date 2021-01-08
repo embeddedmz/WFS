@@ -354,6 +354,7 @@ start_wfs () {
                 continue
             fi
         elif [ "$RESTART_SERVICE" = "FALSE" ]
+        then
             # TODO : check that there isn't a new default gateway for the secondary interface (3G)
             # here, otherwise, restart the service
             SEC_IF=`ip r | grep "$SECONDARY_GW_IFACE"`

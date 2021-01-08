@@ -302,19 +302,22 @@ start_wfs () {
             # check that static routes are still there, otherwise, restart the service
             # no need to check that primary gateway address has changed
             # (but don't use ppp0 as a primary interface !)
-            CURRENT_ROUTES=`ip r`
-            for x in $TARGETS
-            do
-                TEST_ROUTE=`echo "$CURRENT_ROUTES" | grep "$x"`
-                if [ -z "$TEST_ROUTE" ]
-                then
-                    log ERROR "Static route for '$x' disappeared."
-                    RESTART_SERVICE="TRUE"
-                    break
-                fi
-                # test only one route
-                #break
-            done
+            if [ -n "$SECONDARY_GW" ]
+            then
+                CURRENT_ROUTES=`ip r`
+                for x in $TARGETS
+                do
+                    TEST_ROUTE=`echo "$CURRENT_ROUTES" | grep "$x"`
+                    if [ -z "$TEST_ROUTE" ]
+                    then
+                        log ERROR "Static route for '$x' disappeared."
+                        RESTART_SERVICE="TRUE"
+                        break
+                    fi
+                    # test only one route
+                    #break
+                done
+            fi
         fi
 
         if [ -z "$SECONDARY_GW" ]

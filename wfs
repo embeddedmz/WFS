@@ -370,7 +370,7 @@ start_wfs () {
                 #else
                 #    log ERROR "Unable to determine current secondary interface gateway."
                 #    RESTART_SERVICE="TRUE"
-                #fi
+                fi
             elif [ "$SEC_IF_COUNT" -gt "1" ]
             then
                 log ERROR "Multiple routes detected for secondary interface."

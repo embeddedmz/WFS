@@ -7,7 +7,7 @@ After=network.target
 Type=simple
 ExecStart=/bin/bash /usr/bin/wfs
 #ExecStop=/bin/bash /usr/bin/wfs --stop
-#Restart=on-failure
+Restart=on-failure
 
 [Install]
 WantedBy=graphical.target

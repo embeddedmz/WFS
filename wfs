@@ -212,12 +212,12 @@ check_wan_status () {
 
     if [ "$TARGETS_FAILED" -ge "$THRESHOLD" ] && [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
     then
-	    switch
+        switch
     elif [ "$ACTIVE_CONNECTION" = "SECONDARY" ]
     then
         if [ "$TARGETS_FAILED" = "0" ]
         then
-	        switch
+            switch
         fi
     else
         log DEBUG "WAN Link: $ACTIVE_CONNECTION"
@@ -264,6 +264,7 @@ start_wfs () {
 
     log INFO "Starting monitoring of WAN link."
 
+    RESTART_SERVICE="FALSE"
     while true
     do
         if [ -z "$PRIMARY_GW" ]
@@ -272,7 +273,7 @@ start_wfs () {
             FOUND_PRIMARY_GW=FALSE
             if [ "$?" = "0" ]
             then
-                PRIMARY_GW=`echo $PRIMARY_GW | cut -d\  -f3`
+                PRIMARY_GW=`echo "$PRIMARY_GW" | cut -d\  -f3`
                 if [ -n "$PRIMARY_GW" ] && [[ "$PRIMARY_GW" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
                 then
                     log INFO "Primary interface gateway is : $PRIMARY_GW"
@@ -297,6 +298,23 @@ start_wfs () {
                 sleep 10
                 continue
             fi
+        else
+            # check that static routes are still there, otherwise, restart the service
+            # no need to check that primary gateway address has changed
+            # (but don't use ppp0 as a primary interface !)
+            CURRENT_ROUTES=`ip r`
+            for x in $TARGETS
+            do
+                TEST_ROUTE=`echo "$CURRENT_ROUTES" | grep "$x"`
+                if [ -z "$TEST_ROUTE" ]
+                then
+                    log ERROR "Static route for '$x' disappeared."
+                    RESTART_SERVICE="TRUE"
+                    break
+                fi
+                # test only one route
+                #break
+            done
         fi
 
         if [ -z "$SECONDARY_GW" ]
@@ -305,7 +323,7 @@ start_wfs () {
             FOUND_SECONDARY_GW=FALSE
             if [ "$?" = "0" ]
             then
-                SECONDARY_GW=`echo $SECONDARY_GW | cut -d\  -f3`
+                SECONDARY_GW=`echo "$SECONDARY_GW" | cut -d\  -f3`
                 if [ -n "$SECONDARY_GW" ] && [[ "$SECONDARY_GW" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
                 then
                     log INFO "Secondary interface gateway is : $SECONDARY_GW"
@@ -322,9 +340,62 @@ start_wfs () {
                 sleep 10
                 continue
             fi
+        else
+            # TODO : check that there isn't a new default gateway for the secondary interface (3G)
+            # here, otherwise, restart the service
+            SEC_IF=`ip r | grep "$SECONDARY_GW_IFACE"`
+            SEC_IF_COUNT=`echo "$SEC_IF" | wc -l`
+            if [ -z "$SEC_IF" ]
+            then
+                if [ "$ACTIVE_CONNECTION" = "SECONDARY" ]
+                then
+                    log ERROR "Secondary interface disappeared !"
+                    log INFO "Restoring primary gateway '$PRIMARY_GW' with a metric of 0 !"
+                    route_add "$PRIMARY_GW" 0
+                    RESTART_SERVICE="TRUE"
+                fi
+            elif [ "$SEC_IF_COUNT" -eq "1" ]
+            then
+                CURRENT_SECONDARY_GW=`ip route show 0.0.0.0/0 dev "$SECONDARY_GW_IFACE" 2>&1`
+                if [ "$?" = "0" ]
+                then
+                    CURRENT_SECONDARY_GW=`echo "$CURRENT_SECONDARY_GW" | cut -d\  -f3`
+                    if [ -n "$CURRENT_SECONDARY_GW" ] && \
+                       [[ "$CURRENT_SECONDARY_GW" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && \
+                       [ "$CURRENT_SECONDARY_GW" != "$SECONDARY_GW" ]
+                    then
+                        log ERROR "Secondary interface gateway changed from '$SECONDARY_GW' to '$CURRENT_SECONDARY_GW'."
+                        RESTART_SERVICE="TRUE"
+                    fi
+                #else
+                #    log ERROR "Unable to determine current secondary interface gateway."
+                #    RESTART_SERVICE="TRUE"
+                #fi
+            elif [ "$SEC_IF_COUNT" -gt "1" ]
+            then
+                log ERROR "Multiple routes detected for secondary interface."
+                
+                if [ "$ACTIVE_CONNECTION" = "SECONDARY" ]
+                then
+                    log INFO "Deleting secondary interface gateway '$SECONDARY_GW'."
+                    route_del "$SECONDARY_GW"
+                    log INFO "Restoring primary gateway '$PRIMARY_GW' with a metric of 0 !"
+                    route_add "$PRIMARY_GW" 0
+                    RESTART_SERVICE="TRUE"
+                fi
+                RESTART_SERVICE="TRUE"
+            fi
         fi
 
-	if [ -n "$PRIMARY_GW" ] && [ -n "$SECONDARY_GW" ]
+        # We restart the script here to handle the case where static routes are deleted externally
+        # and secondary gateway has changed
+        if [ "$RESTART_SERVICE" = "TRUE" ]
+        then
+            log INFO "Changes on routes detected. Shutting down WFS. It will be restarted via systemd."
+            exit 1
+        fi
+
+        if [ -n "$PRIMARY_GW" ] && [ -n "$SECONDARY_GW" ]
         then
             test_wan_status
         fi

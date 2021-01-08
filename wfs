@@ -287,6 +287,9 @@ start_wfs () {
                             log INFO "Adding static route for host $x"
                             route add -host "$x" gw "$PRIMARY_GW" >> /dev/null 2>&1
                         done
+
+                        # So the checking of static routes won't fail (I hope 1 sec is sufficient)
+                        sleep 1
                     fi
                     FOUND_PRIMARY_GW=TRUE
                 fi
@@ -310,13 +313,20 @@ start_wfs () {
                     TEST_ROUTE=`echo "$CURRENT_ROUTES" | grep "$x"`
                     if [ -z "$TEST_ROUTE" ]
                     then
-                        log ERROR "Static route for '$x' disappeared."
+                        log ERROR "Static route for '$x' disappeared (latency problem ?). Deleting it anyway."
+                        route del -host "$x" gw "$PRIMARY_GW" >> /dev/null 2>&1
                         RESTART_SERVICE="TRUE"
-                        break
                     fi
                     # test only one route
                     #break
                 done
+
+                # Restore secondary gateway
+                if [ "$ACTIVE_CONNECTION" = "PRIMARY" ]
+                then
+                    log INFO "Restoring secondary gateway '$SECONDARY_GW' with a metric of 20 !"
+                    ip route add default via "$SECONDARY_GW" metric 20
+                fi
             fi
         fi
 
@@ -343,7 +353,7 @@ start_wfs () {
                 sleep 10
                 continue
             fi
-        else
+        elif [ "$RESTART_SERVICE" = "FALSE" ]
             # TODO : check that there isn't a new default gateway for the secondary interface (3G)
             # here, otherwise, restart the service
             SEC_IF=`ip r | grep "$SECONDARY_GW_IFACE"`
